@@ -1,24 +1,27 @@
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+import uvicorn
+from fastapi import Form, Request, FastAPI
 import cv2
 import numpy as np
 import base64
-from PIL import Image
 from io import BytesIO
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-app = Flask(__name__)
-CORS(app)
+app = FastAPI()
 
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
-app.config['MAX_RESPONSE_SIZE'] = 16 * 1024 * 1024
+origins = [
+    "http://localhost",
+    "http://localhost:8000"
+    "http://localhost:8080",
+]
 
-
-@app.after_request
-def after_request(response):
-    response.direct_passthrough = False
-    if response.content_length is not None and response.content_length > app.config['MAX_RESPONSE_SIZE']:
-        response.data = 'Response size exceeded'
-    return response
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def histogram_equalize(img):
@@ -31,11 +34,11 @@ def histogram_equalize(img):
     return cv2.merge((blue, green, red))  # merge back the three channels
 
 
-@app.route("/photo", methods=['POST'])
-def photo():
-    image = request.data
+@app.post("/photo")
+async def photo(filedata: str = Form(...)):
+    image_as_bytes = str.encode(filedata)
 
-    decoded_img = base64.b64decode(image)
+    decoded_img = base64.b64decode(image_as_bytes)
     img = Image.open(BytesIO(decoded_img))
 
     img.save("camera.jpg", "jpeg")
@@ -51,8 +54,8 @@ def photo():
     return "success"
 
 
-@app.route("/process", methods=['GET'])
-def process():
+@app.get("/process")
+async def process():
     img = cv2.imread('imageHE.jpg')
 
     count = 0
@@ -92,5 +95,4 @@ def process():
 
 
 if __name__ == "__main__":
-    # for production change debug to False
-    app.run(host='0.0.0.0')
+    uvicorn.run("server:app")
