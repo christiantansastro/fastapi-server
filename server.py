@@ -36,9 +36,9 @@ def histogram_equalize(img):
 
 @app.post("/photo")
 async def photo(filedata: str = Form(...)):
-    image_as_bytes = str.encode(filedata)
+    image = filedata
 
-    decoded_img = base64.b64decode(image_as_bytes)
+    decoded_img = base64.b64decode(image)
     img = Image.open(BytesIO(decoded_img))
 
     img.save("camera.jpg", "jpeg")
